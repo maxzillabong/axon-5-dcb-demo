@@ -1,10 +1,8 @@
 package nl.maxzilla.axon.commands;
 
-import org.axonframework.modelling.command.TargetAggregateIdentifier;
-
 import java.math.BigDecimal;
 
 public record DepositMoneyCommand(
-    @TargetAggregateIdentifier String accountId,
+    String accountId,
     BigDecimal amount
 ) {}
