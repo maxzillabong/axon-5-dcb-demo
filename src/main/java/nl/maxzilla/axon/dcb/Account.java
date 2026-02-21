@@ -1,58 +1,48 @@
 package nl.maxzilla.axon.dcb;
 
+import nl.maxzilla.axon.events.MoneyTransferredEvent;
+import org.axonframework.eventsourcing.annotation.EventSourcingHandler;
+import org.axonframework.eventsourcing.annotation.EventSourcedEntity;
+import org.axonframework.eventsourcing.annotation.reflection.EntityCreator;
+
 import java.math.BigDecimal;
 
-/**
- * Plain entity - no Axon annotations.
- * 
- * This is the DCB approach: domain models stay clean of framework concerns.
- * The consistency boundary is defined separately in TransferDCB.
- */
+@EventSourcedEntity(tagKey = "accountId")
 public class Account {
     
-    private final String accountId;
-    private final String accountType;
-    private BigDecimal balance;
+    private String accountId;
+    private BigDecimal balance = BigDecimal.ZERO;
     
-    public Account(String accountId, String accountType, BigDecimal initialBalance) {
-        if (initialBalance.compareTo(BigDecimal.ZERO) < 0) {
-            throw new IllegalArgumentException("Initial balance cannot be negative");
-        }
-        
-        this.accountId = accountId;
-        this.accountType = accountType;
-        this.balance = initialBalance;
+    @EntityCreator
+    public Account() {
     }
     
-    public void deposit(BigDecimal amount) {
-        if (amount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("Deposit amount must be positive");
+    @EventSourcingHandler
+    void evolve(MoneyTransferredEvent event) {
+        // This entity responds to events tagged with THIS account's ID
+        // The event stream is filtered by the tagKey
+        if (event.fromAccountId().equals(this.accountId)) {
+            this.balance = this.balance.subtract(event.amount());
+        } else if (event.toAccountId().equals(this.accountId)) {
+            this.balance = this.balance.add(event.amount());
         }
-        this.balance = this.balance.add(amount);
-    }
-    
-    public void withdraw(BigDecimal amount) {
-        if (amount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("Withdrawal amount must be positive");
-        }
-        
-        BigDecimal newBalance = this.balance.subtract(amount);
-        if (newBalance.compareTo(BigDecimal.ZERO) < 0) {
-            throw new IllegalStateException("Insufficient funds");
-        }
-        
-        this.balance = newBalance;
     }
     
     public String getAccountId() {
         return accountId;
     }
     
-    public String getAccountType() {
-        return accountType;
-    }
-    
     public BigDecimal getBalance() {
         return balance;
+    }
+    
+    public void withdraw(BigDecimal amount) {
+        if (balance.compareTo(amount) < 0) {
+            throw new IllegalStateException("Insufficient funds");
+        }
+    }
+    
+    public void deposit(BigDecimal amount) {
+        // No validation needed for deposit
     }
 }
