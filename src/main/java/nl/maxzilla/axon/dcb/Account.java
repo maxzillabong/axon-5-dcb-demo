@@ -1,5 +1,6 @@
 package nl.maxzilla.axon.dcb;
 
+import nl.maxzilla.axon.events.AccountCreatedEvent;
 import nl.maxzilla.axon.events.MoneyTransferredEvent;
 import org.axonframework.eventsourcing.annotation.EventSourcingHandler;
 import org.axonframework.eventsourcing.annotation.EventSourcedEntity;
@@ -15,6 +16,12 @@ public class Account {
     
     @EntityCreator
     public Account() {
+    }
+    
+    @EventSourcingHandler
+    void evolve(AccountCreatedEvent event) {
+        this.accountId = event.accountId();
+        this.balance = event.initialBalance();
     }
     
     @EventSourcingHandler
